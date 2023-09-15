@@ -20,7 +20,7 @@ from langchain.indexes import VectorstoreIndexCreator
 from langchain.embeddings import OpenAIEmbeddings
 
 llm_model = "gpt-3.5-turbo"
-chat = ChatOpenAI(temperature=0.0, model=llm_model)
+llm = ChatOpenAI(temperature=0.0, model=llm_model)
 
 problem = """The Education Bureau sends a batch of books to schools. \
     If each school sent 8 boxes of Chinese language books and 6 boxes of maths books, then the remaining maths books are three times the Chinese language books. \
@@ -48,14 +48,18 @@ prompt_solution = f"""
     problem: ```{problem}```
 """
 
-_prompt_template_solution = ChatPromptTemplate.from_template(prompt_solution)
-
-chain_solution = LLMChain(llm=chat, prompt=_prompt_template_solution)
-
-prompt_tsummary = ChatPromptTemplate.from_template(
-    "Summarise the: {solution}"
+prompt_one = ChatPromptTemplate.from_template(
+    "What is the mathmatical equation of the {problem}?"
 )
 
-chain_summary = LLMChain(llm=chat, prompt=prompt_tsummary)
+chain_one = LLMChain(llm=llm, prompt=prompt_one)
 
-full_chain = SimpleSequentialChain(chains=[chain_solution, chain_summary], verbose=True)
+prompt_two = ChatPromptTemplate.from_template(
+    "what is the solution of the :{equation}"
+)
+
+chain_two = LLMChain(llm=llm, prompt=prompt_two)
+
+overall_chain = SimpleSequentialChain(chains=[chain_one, chain_two], verbose=True)
+
+overall_chain.run(problem)

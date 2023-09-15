@@ -19,8 +19,17 @@ from langchain.document_loaders import JSONLoader
 from langchain.indexes import VectorstoreIndexCreator
 from langchain.embeddings import OpenAIEmbeddings
 
+from langchain.agents.agent_toolkits import create_python_agent
+from langchain.agents import load_tools, initialize_agent
+from langchain.agents import AgentType
+from langchain.tools.python.tool import PythonREPLTool
+from langchain.python import PythonREPL
+from langchain.chat_models import ChatOpenAI
+from langchain.agents import tool
+
 llm_model = "gpt-3.5-turbo"
-chat = ChatOpenAI(temperature=0.0, model=llm_model)
+llm = ChatOpenAI(temperature=0.0, model=llm_model)
+tools = load_tools(["llm-math","wolfram-alpha"], llm=llm)
 
 problem = """The Education Bureau sends a batch of books to schools. \
     If each school sent 8 boxes of Chinese language books and 6 boxes of maths books, then the remaining maths books are three times the Chinese language books. \
@@ -31,15 +40,16 @@ problem = """The Education Bureau sends a batch of books to schools. \
 role = """
     You are an experienced maths teacher. \
     You are good at solving descriptive maths problems by converting them into mathematical equations. \
-    You always solve maths problems in a step-by-step way to be sure having the correct answer. \
-    You use external tools such as Wolfram Alpha for any mathematical calculation. \
-    Once you have the equation, you use external tools such as Wolfram Alpha to solve the equations.    
+    You always solve maths problems in a step-by-step way to be sure having the correct answer.     
 """
 
 # APE (Automatic Prompt Engineer)
 method = """
     Take a deep breath. \
-    Following the two examples below, solve the problem by proposing as many different methods as possible and finding the most logically consistent one as the final answer.
+    Follow the two examples below.\
+    Find the equations by proposing as many different methods as possible and finding the most logically consistent one as the final answer. \
+    Keep trying if you cannot find the equation. \
+    Only output the equations and skip the analytical process. \
     Hints: ”algebra”;”optimization”,”equation”,”logical reasoning”
 
     Example 1:
@@ -50,7 +60,7 @@ method = """
     2. The car takes Class B to the point where they should start walking and then returns to meet Class A. The distance the car travels to take Class B is (15X+X)=8X. Therefore, Class B walks 51−8X km, and the time Class B takes to walk is 51−8X hours. 
     3. In this time, the car travels (51−8X)×12 km. At this point, the car needs to pick up Class A and return to the park.
     ###Solution:
-    By solving the equation (51−8X)×12+(51−8X) +X=51, we get X=5.5 and 51−8X=7. Therefore, Class A walks 5.5 km, and Class B walks 7 km.
+    Equation: (51−8X)×12+(51−8X) +X=51.
 
     Example 2:
     ###Problem:
@@ -59,11 +69,11 @@ method = """
     1. Let the sales department have X people and the IT department have Y people. Then the number of people participating from the sales department is 0.5X and from the IT department is 0.6Y. The IT department has 6 more people participating than the sales department, so 0.6Y−0.5X=6.
     2. The number of people participating from the sales department is 0.5X, so the remaining number is also 0.5X. 60% of the remaining people are selected, which is 0.3X. The number of people participating from the IT department is 0.6Y, so the remaining number is 0.4Y. 50% of the remaining people are selected, which is 0.2Y. Therefore, 0.3X+0.2Y=30.
     ###Solution:
-    By solving the equation 0.6Y−0.5X=6 and 0.3X+0.2Y=30 to find X=60 and Y=60. Therefore, the total number of employees in the company is 120.
+    Equation: 0.6Y−0.5X=6 and 0.3X+0.2Y=30.
 """
 
 prompt = f"""as {role}, solve the problem that is delimited by triple backticks by using {method}.
-    problem: ```{problem}```
+    ###Problem: ```{problem}```
 """
 
 prompt_template = ChatPromptTemplate.from_template(prompt)
@@ -73,21 +83,14 @@ prompt_solution = prompt_template.format_messages(
     method=method
 )
 
-response = chat(prompt_solution)
-solution = response.content
+response = llm(prompt_solution)
+equation = response.content
 
-prompt_one = ChatPromptTemplate.from_template(
-    "What is summary of the {solution}?"
-)
+agent= initialize_agent(
+    tools, 
+    llm, 
+    agent=AgentType.CHAT_ZERO_SHOT_REACT_DESCRIPTION,
+    handle_parsing_errors=True,
+    verbose = True)
 
-chain_one = LLMChain(llm=chat, prompt=prompt_one)
-
-prompt_two = ChatPromptTemplate.from_template(
-    "what is final answer of the :{summary}"
-)
-
-chain_two = LLMChain(llm=chat, prompt=prompt_two)
-
-overall_chain = SimpleSequentialChain(chains=[chain_one, chain_two], verbose=True)
-
-overall_chain.run(solution)
+agent(equation)
