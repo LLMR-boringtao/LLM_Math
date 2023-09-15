@@ -1,8 +1,8 @@
 # LLM for Math
 
 1. Langchain template (ChatOpenAI)
-2. Prompting (Role play + CoT + Few-shot + Self-Critic + ReAct)
-3. Memory (Summary)
+2. Prompting (Role play + CoT + Few-shot + Self-Critic + (ReAct))
+3. Memory (Summary + Embeded + Routing)
 4. Data processing (Context aware splitting + MapReduce)
 5. Retrival (Similarity + Context compression)
 6. Chains (Self-consitency vs Novolty search)
@@ -12,4 +12,4 @@
 
 # Math agent
 1. Prototype: Flowise
-2. Production: Prompt flow
+2. Production: Prompt flow (Production ready)
